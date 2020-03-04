@@ -1,0 +1,2 @@
+from .myModel import *
+
