@@ -21,55 +21,42 @@ sys.path.append("..")
 import myTool as tool
 import myModel as model
 
-path_model_1 = "./Alexnet.pkl"
-path_state_dict_2 = "./Alexnet_state_dict.pkl"
+path_model_1 = "../pkl/Alexnet.pkl"
+path_state_dict_1 = "../pkl/Alexnet_state_dict.pkl"
 
-path_model_2 = "./VGG16.pkl"
-path_state_dict_2 = "./VGG16_state_dict.pkl"
+path_model_2 = "../pkl/VGG16.pkl"
+path_state_dict_2 = "../pkl/VGG16_state_dict.pkl"
 
 # Select_dataset = 'Fashion_mnist'
 Select_dataset = 'CIFAR10'
 
 def main():
     # 0. Hyper-Parameter
-
-    batch_size = 10
-    lr, num_epochs = 0.001, 1
-
-    #  还有iteration epoch 这两个参数根据batch size和dataset打大小来决定,
-    tool.print_get_gpu_info()
-
-    train_iter, test_iter = load_data_fashion_mnist(batch_size, 224)
-    tool.print_get_gpu_info()
-
-    plt_label = 'Memory-iteration, ' + 'batchsize = %d' % batch_size + ', epoch= %d' % num_epochs
-
-    # for X_1, Y_1 in train_iter:
-    #     print('X_1 =', X_1.shape,  '\nY_1 =', Y_1.type(torch.int32))
-    #     break
-    # print("Run at code line 172")
-    # tool.print_get_gpu_info()
-    #
-    # for X_2, Y_2 in test_iter:
-    #     print('X_2 =', X_2.shape,  '\nY_2 =', Y_2.type(torch.int32))
-    #     break
-    # tool.print_get_gpu_info()
-
-    # train_ch5(net, train_iter, test_iter, batch_size, optimizer, device, num_epochs)
+    test1, test2 = 0, 0
     iteration_num = 0
     iteration_time = []
     epoch_time = []
-    # global iteration_time, epoch_time
+    batch_size = 10
+    lr, num_epochs = 0.001, 1
 
-    device = torch.device('cpu')
+    tool.print_get_gpu_info()
+
+    train_iter, test_iter = load_data_fashion_mnist(batch_size, 224)
+
+    tool.print_get_gpu_info()
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print("training on ", device)
-    # basic_gpu_memory = get_gpu_memory()
 
-    net1 = model.AlexNet()
-    net1 = net1.to(device)
+    net1 = model.AlexNet().to(device)
+    # net1 = net1.to(device)
     optimizer1 = torch.optim.Adam(net1.parameters(), lr=lr)
     loss1 = torch.nn.CrossEntropyLoss()
+
+    net2 = torchvision.models.vgg16_bn(pretrained=False, progress=True).to(device)
+
+    loss2 = torch.nn.CrossEntropyLoss()
+    optimizer2 = torch.optim.Adam(net2.parameters(), lr=lr)
 
     All_time = time.time()
     for epoch in range(num_epochs):
@@ -81,20 +68,39 @@ def main():
             # 训练任务1
             interaion_time = time.time()
             print("Net1 Before iteraion:%d" % iteration_num, sep="\t")
-            net1 = net1.to(device)
+            net1 = model.AlexNet().to(device)
+            # net1 = net1.to(device)
             # if iteration_num > 0:
-            if iteration_num == 100000:
+            test1 +=1
+            if iteration_num >= 0 and test1 > 2:
+                test1 = 0
                 # net = model.AlexNet()
                 # 加载整个模型
-                net1 = torch.load(path_model_1)
-                print(id(torch.load(path_model_1)))
-                print(id(net1))
-                # net = net.to(device)
+                # net1 = torch.load(path_model_1).to(device)
+
+                # 加载回复点
+                # path_checkpoint = "./checkpoint_%d_itreation.pkl" % (iteration_num - 1)
+                path_checkpoint = "./checkpint_{}_itreation.pkl".format(iteration_num-2)
+                print("Load pkl: %s" % path_checkpoint)
+                print("loss1: {}".format(loss1))
+                checkpoint = torch.load(path_checkpoint)
+
+                net1.load_state_dict(checkpoint['model_state_dict'])
+
+                optimizer1.load_state_dict(checkpoint['optimizer_state_dic'])
+
+                start_iteration_num = checkpoint['iteration_num']
+
                 print("net1 in CUDA:", next(net1.parameters()).is_cuda)
                 # print(net_load)
                 # 加载模型参数
                 # state_dict_load = torch.load(path_state_dict)
                 print("torch.load(%s)" % path_model_1)
+
+                params = net1.state_dict()
+                for k, v in params.items():
+                    print(k,v)
+                    break
             # print(id(net))
             # tool.print_get_gpu_info()
 
@@ -108,26 +114,42 @@ def main():
             train_l_sum1 += l1.cpu().item()
             train_acc_sum1 += (y_hat.argmax(dim=1) == y).sum().cpu().item()
 
-            iteration_time.append(time.time() - interaion_time)
+
 
             tool.print_get_gpu_info()
 
             # print('Net1 interaion %d, loss %.4f, train acc %.3f, , time %.10f sec'
             #       % (iteration_num + 1, train_l_sum1 / batch_count, train_acc_sum1 / n, time.time() - interaion_time), sep="\t")
 
-            if iteration_num > 0:
+            if iteration_num >= 0:
                 # 保存整个模型
-                torch.save(net1, path_model_1)
+                # torch.save(net1, path_model_1)
 
                 # 保存模型参数
                 # net_state_dict = net1.state_dict()
                 # torch.save(net1_state_dict, path_state_dict)
+
+                # 保存更多信息
+                checkpoint = {"model_state_dict": net1.state_dict(),
+                              "optimizer_state_dic": optimizer1.state_dict(),
+                              "loss1": loss1,
+                              "iteration_num": iteration_num}
+                path_checkpoint = "./checkpint_{}_itreation.pkl".format(iteration_num)
+                torch.save(checkpoint, path_checkpoint)
                 print("torch.save(net, %s)" % path_model_1)
+                print("Save pkl: %s" % path_checkpoint)
+
                 # net1.to('cpu')
                 torch.cuda.empty_cache()
                 print("net in CUDA:", next(net1.parameters()).is_cuda)
+                # print("%s训练前: "%net1, net1.features[0].weight[0, ...])
+
+
+
+
 
             net1.to('cpu')
+            del net1
             torch.cuda.empty_cache()
             print(torch.cuda.memory_allocated() / (2 ** 20), torch.cuda.max_memory_allocated() / (2 ** 20))
             print(torch.cuda.memory_cached() / (2 ** 20), torch.cuda.max_memory_cached() / (2 ** 20))
@@ -136,23 +158,28 @@ def main():
             print("Net1 After interaion: %d" % iteration_num, sep="\t")
             tool.print_get_gpu_info()
 
+            iteration_time.append(time.time() - interaion_time)
+            n += y.shape[0]
+            batch_count += 1
+            iteration_num += 1
+
+            print('Net1 iteraion %d, loss %.4f, train acc1 %.3f, , time %.10f sec'
+                  % (iteration_num, train_l_sum1 / batch_count, train_acc_sum1 / n, time.time() - interaion_time), sep="\t")
+            '''训练任务1结束'''
 
 
-
-
-            # 训练任务2
-            net2 = torchvision.models.vgg16_bn(pretrained=False, progress=True)
-            loss2 = torch.nn.CrossEntropyLoss()
-            optimizer2 = torch.optim.Adam(net2.parameters(), lr=lr)
+            '''训练任务2'''
+            net2 = torchvision.models.vgg16_bn(pretrained=False, progress=True).to(device)
 
             interaion_time = time.time()
             print("Net2 Before iteraion:%d" % iteration_num, sep="\t")
-            net2 = net2.to(device)
-            # if iteration_num > 0:
-            if iteration_num == 100000:
+
+            test2 +=1
+            if iteration_num > 0 and test2 >2:
+                test2 = 0
                 # net = model.AlexNet()
                 # 加载整个模型
-                net2 = torch.load(path_model_2)
+                net2 = torch.load(path_model_2).to(device)
                 print(id(torch.load(path_model_2)))
                 # print(id(net2))
                 # net = net.to(device)
@@ -161,6 +188,12 @@ def main():
                 # 加载模型参数
                 # state_dict_load = torch.load(path_state_dict)
                 print("torch.load(%s)" % path_model_2)
+
+                # params = net2.state_dict()
+                # for k, v in params.items():
+                #     print(k,v)
+                #     break
+
             # print(id(net))
             # tool.print_get_gpu_info()
 
@@ -171,21 +204,17 @@ def main():
             optimizer2.step()
             train_l_sum2 += l2.cpu().item()
             train_acc_sum2 += (y_hat2.argmax(dim=1) == y).sum().cpu().item()
-            n += y.shape[0]
 
-            batch_count += 1
-            iteration_num += 1
+
             iteration_time.append(time.time() - interaion_time)
-
             tool.print_get_gpu_info()
-
-            # print('interaion %d, loss %.4f, train acc %.3f, , time %.10f sec'
-            #       % (iteration_num + 1, train_l_sum1 / batch_count, train_acc_sum1 / n, time.time() - interaion_time),
-            #       sep="\t")
+            print('Net2 iteraion %d, loss %.4f, train acc2 %.3f, , time %.10f sec'
+                  % (iteration_num, train_l_sum1 / batch_count, train_acc_sum1 / n, time.time() - interaion_time),
+                  sep="\t")
 
             if iteration_num > 0:
                 # 保存整个模型
-                torch.save(net1, path_model_2)
+                torch.save(net2, path_model_2)
 
                 # 保存模型参数
                 # net_state_dict = net1.state_dict()
@@ -195,14 +224,24 @@ def main():
                 torch.cuda.empty_cache()
                 print("net in CUDA:", next(net2.parameters()).is_cuda)
             # net2.to('cpu')
-            # del net2
+            del net2
             torch.cuda.empty_cache()
             print(torch.cuda.memory_allocated() / (2 ** 20), torch.cuda.max_memory_allocated() / (2 ** 20))
             print(torch.cuda.memory_cached() / (2 ** 20), torch.cuda.max_memory_cached() / (2 ** 20))
-            print(torch.cuda.reset_max_memory_cached(device), torch.cuda.reset_max_memory_allocated(device))
+            # print(torch.cuda.reset_max_memory_cached(device), torch.cuda.reset_max_memory_allocated(device))
             # print(torch.cuda.memory_stats(device), torch.cuda.memory_summary(device))
             print("Net2 After interaion: %d" % iteration_num, sep="\t")
             tool.print_get_gpu_info()
+
+
+            iteration_time.append(time.time() - interaion_time)
+            print('iteraion %d, loss %.4f, train acc2 %.3f, , time %.10f sec'
+                  % (iteration_num, train_l_sum2 / batch_count, train_acc_sum2 / n, time.time() - interaion_time),
+                  sep="\t")
+            '''训练任务2结束'''
+
+
+
 
         test_acc1 = evaluate_accuracy(test_iter, net1)
         test_acc2 = evaluate_accuracy(test_iter, net2)
@@ -217,6 +256,9 @@ def main():
         print("After epoch:", sep="\t")
         tool.print_get_gpu_info()
     print("Train end time %.2f sec" % (time.time() - All_time))
+
+    plt_label = 'Memory-iteration, ' + 'batchsize = %d' % batch_size + ', epoch= %d' % num_epochs
+
     # plt_label = 'Memory-iteration, ' + 'batchsize = %d'%batch_size + ', epoch= %d'%num_epochs
     # plt_title = '%s - Alexnet' % Select_dataset
     # plt.figure(1)  # 创建图表1
