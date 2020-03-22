@@ -15,7 +15,7 @@ sys.path.append("..")
 
 # import nvidia_smi
 
-GPU_DEVICE = 0
+GPU_DEVICE = 1
 batch_size = 50
 lr, num_epochs = 0.01, 100
 log_interval = 10
@@ -36,8 +36,6 @@ print("lr = %0.4f batch_size = %d log_interval:%d Select_dataset=%s" %  (lr, bat
 # frame = inspect.currentframe()          # define a frame to track
 # gpu_tracker = MemTracker(frame)         # define a GPU tracker
 # import GPUtil
-
-
 
 
 import subprocess
@@ -183,7 +181,7 @@ def train(net, train_iter, test_iter, batch_size, optimizer, device, num_epochs)
 
             # test1234556 +=1
             # if(test1234556 > 3):break
-        scheduler.step()
+        # scheduler.step()
         test_acc = evaluate_accuracy(test_iter, net)
 
         Test_acc.append(test_acc)
@@ -192,8 +190,8 @@ def train(net, train_iter, test_iter, batch_size, optimizer, device, num_epochs)
         print('epoch %d, loss %.4f, train acc %.3f, test acc %.3f, time %.1f sec'
               % (epoch + 1, train_l_sum / batch_count, train_acc_sum / n, test_acc, time.time() - Time_epoch_start))
         
-        if test_acc >= 0.985:
-            print("est_acc >= 0.985, epoch = ",epoch)
+        if test_acc >= 0.95:
+            print("est_acc >= 0.95, epoch = ",epoch)
             break 
 
         # tool.print_get_gpu_info()
@@ -236,13 +234,7 @@ if __name__ == '__main__':
     # 6. save the train info and draw the figure
     # 7. 模型的参数大小
     # 8.
-    from torchsummary import summary
-    net.to(device)  #这句不加的话,model和参数放的位置会不对应
-    if Select_dataset == 'Fashion_mnist':
-        print(summary(model=net, input_size=(1, 224, 224), batch_size=batch_size ,device="cuda")) # model, input_size(channel, H, W), batch_size, device
-    elif Select_dataset == 'CIFAR10':
-        print(summary(model=net, input_size=(3, 224, 224), batch_size=batch_size, device="cuda"))  # model, input_size(channel, H, W), batch_size, device
-    else:pass
+
     
     Time_Whole_start = time.time()
 
@@ -250,9 +242,9 @@ if __name__ == '__main__':
     # 0. Hyper-Parameter
 
 
-    net = torchvision.models.AlexNet()
+    net = torchvision.models.vgg16(pretrained=True)
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, )
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)     # 设置学习率下降策略
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=40, gamma=0.1)     # 设置学习率下降策略
     # optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     loss = torch.nn.CrossEntropyLoss()
 
@@ -273,7 +265,13 @@ if __name__ == '__main__':
     #     print('X_2 =', X_2.shape,  '\nY_2 =', Y_2.type(torch.int32))
     #     break
     # tool.print_get_gpu_info()
-
+    from torchsummary import summary
+    net.to(device)  #这句不加的话,model和参数放的位置会不对应
+    if Select_dataset == 'Fashion_mnist':
+        print(summary(model=net, input_size=(1, 224, 224), batch_size=batch_size ,device="cuda")) # model, input_size(channel, H, W), batch_size, device
+    elif Select_dataset == 'CIFAR10':
+        print(summary(model=net, input_size=(3, 224, 224), batch_size=batch_size, device="cuda"))  # model, input_size(channel, H, W), batch_size, device
+    else:pass
 
     train(net, train_iter, test_iter, batch_size, optimizer, device, num_epochs)
     # plt_label = 'Memory-iteration, ' + 'batchsize = %d'%batch_size + ', epoch= %d'%num_epochs
@@ -300,18 +298,9 @@ if __name__ == '__main__':
     # plt.show()
     # Utilization的纵坐标数值不对 是因为没有把数值转化成float格式
    
-    # from torchsummary import summary
-    # net.to(device)  #这句不加的话,model和参数放的位置会不对应
-    # if Select_dataset == 'Fashion_mnist':
-    #     print(summary(model=net, input_size=(1, 224, 224), batch_size=batch_size ,device="cuda")) # model, input_size(channel, H, W), batch_size, device
-    # elif Select_dataset == 'CIFAR10':
-    #     print(summary(model=net, input_size=(3, 224, 224), batch_size=batch_size, device="cuda"))  # model, input_size(channel, H, W), batch_size, device
-    # else:pass
-    # print("Max iteration time % 0.5f" % max(iteration_time),"\tMin iteration time % 0.5f" % min(iteration_time),
-    #     "\tMax epoch time % 0.5f" % max(epoch_time),        "\t\tMin epoch time % 0.5f" % min(epoch_time))
-    #
+
     plt_label = ' SinglejobAlexnet:Memory-iteration, ' + 'batchsize = %d'%batch_size + ', N_iter= %d'%num_epochs
-    plt_title = '%s - Singlejob:Alexnet' % Select_dataset
+    plt_title = '%s - Singlejob:VGG16' % Select_dataset
     plt.figure(1)  # 创建图表1
     x_value = np.arange(tool.GPU_resoures_list.__len__())
     plt.plot(x_value, np.array(tool.GPU_resoures_list).transpose()[:][0].astype(np.float16), c='coral', linestyle='-', label=plt_label)
@@ -329,113 +318,18 @@ if __name__ == '__main__':
 
 
 '''
-Alexnet - MNIST:    没有进行权值初始化
+VGG16 - MNIST:    没有进行权值初始化
 lr=0.01,batchsize=100
-poch 1, loss 0.8241, train acc 0.709, test acc 0.982, time 89.9 sec
-epoch 2, loss 0.0678, train acc 0.979, test acc 0.990, time 92.7 sec
-epoch 3, loss 0.0446, train acc 0.986, test acc 0.991, time 93.7 sec
-epoch 4, loss 0.0335, train acc 0.990, test acc 0.991, time 93.7 sec
-epoch 5, loss 0.0273, train acc 0.991, test acc 0.993, time 94.2 sec
-'''
-'''
-Alexnet - CIFAR10:   没有进行权值初始化
-lr=0.01,batchsize=100
-optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9,)
-epoch 1, loss 2.9632, train acc 0.101, test acc 0.100, time 124.3 sec
-epoch 2, loss 2.3244, train acc 0.099, test acc 0.100, time 126.4 sec
-epoch 3, loss 2.3118, train acc 0.109, test acc 0.146, time 132.6 sec
-epoch 4, loss 2.0061, train acc 0.238, test acc 0.324, time 128.2 sec
-epoch 5, loss 1.6880, train acc 0.359, test acc 0.447, time 126.3 sec
-epoch 6, loss 1.4357, train acc 0.467, test acc 0.533, time 126.4 sec
-epoch 7, loss 1.2434, train acc 0.549, test acc 0.600, time 124.7 sec    
-epoch 8, loss 1.0684, train acc 0.619, test acc 0.655, time 126.7 sec
-epoch 9, loss 0.9109, train acc 0.680, test acc 0.704, time 130.4 sec
-epoch 10, loss 0.7832, train acc 0.727, test acc 0.741, time 129.3 sec
-epoch 11, loss 0.6910, train acc 0.760, test acc 0.750, time 122.5 sec
-epoch 12, loss 0.6107, train acc 0.788, test acc 0.764, time 122.5 sec
-epoch 13, loss 0.5414, train acc 0.811, test acc 0.777, time 121.7 sec
-epoch 14, loss 0.4756, train acc 0.833, test acc 0.786, time 123.9 sec
-epoch 15, loss 0.4213, train acc 0.852, test acc 0.805, time 121.9 sec
-epoch 16, loss 0.3784, train acc 0.867, test acc 0.798, time 121.2 sec
-epoch 17, loss 0.3291, train acc 0.883, test acc 0.809, time 121.1 sec
-epoch 18, loss 0.2974, train acc 0.894, test acc 0.809, time 120.8 sec
-epoch 19, loss 0.2660, train acc 0.906, test acc 0.814, time 121.9 sec
-epoch 20, loss 0.2428, train acc 0.914, test acc 0.810, time 120.9 sec
-epoch 21, loss 0.2166, train acc 0.924, test acc 0.813, time 120.3 sec
-epoch 22, loss 0.1940, train acc 0.931, test acc 0.817, time 120.4 sec
-epoch 23, loss 0.1741, train acc 0.938, test acc 0.815, time 120.2 sec
-epoch 24, loss 0.1605, train acc 0.944, test acc 0.816, time 120.6 sec
-epoch 25, loss 0.1543, train acc 0.946, test acc 0.818, time 120.8 sec
-epoch 26, loss 0.1413, train acc 0.950, test acc 0.819, time 119.9 sec
-epoch 27, loss 0.1347, train acc 0.954, test acc 0.814, time 120.3 sec
-epoch 28, loss 0.1258, train acc 0.957, test acc 0.823, time 119.5 sec
-epoch 29, loss 0.1127, train acc 0.962, test acc 0.823, time 120.3 sec
-epoch 30, loss 0.1010, train acc 0.965, test acc 0.826, time 120.3 sec
-epoch 31, loss 0.0997, train acc 0.967, test acc 0.822, time 120.0 sec
-epoch 32, loss 0.0949, train acc 0.969, test acc 0.822, time 120.9 sec
-epoch 33, loss 0.0928, train acc 0.969, test acc 0.823, time 119.4 sec
-epoch 34, loss 0.0851, train acc 0.972, test acc 0.827, time 121.1 sec
-epoch 35, loss 0.0781, train acc 0.974, test acc 0.826, time 120.1 sec
-epoch 36, loss 0.0842, train acc 0.971, test acc 0.827, time 120.3 sec
-epoch 37, loss 0.0693, train acc 0.976, test acc 0.826, time 121.5 sec
-epoch 38, loss 0.0716, train acc 0.977, test acc 0.826, time 123.5 sec
-epoch 39, loss 0.0615, train acc 0.980, test acc 0.834, time 120.5 sec
-epoch 40, loss 0.0675, train acc 0.978, test acc 0.832, time 120.7 sec
-epoch 41, loss 0.0613, train acc 0.979, test acc 0.837, time 115.8 sec
-epoch 42, loss 0.0603, train acc 0.980, test acc 0.828, time 117.3 sec
-epoch 43, loss 0.0579, train acc 0.981, test acc 0.832, time 123.1 sec
 
 '''
 '''
-Alexnet - CIFAR10:   进行kaiming权值初始化
+AlexnVGG16et - CIFAR10:   没有进行权值初始化
 lr=0.01,batchsize=100
 optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9,)
 
-epoch 1, loss 2.0154, train acc 0.263, test acc 0.431, time 205.8 sec
-epoch 2, loss 1.4272, train acc 0.477, test acc 0.575, time 176.2 sec
-epoch 3, loss 1.1889, train acc 0.574, test acc 0.615, time 160.7 sec
-epoch 4, loss 1.0211, train acc 0.638, test acc 0.673, time 134.7 sec
-epoch 5, loss 0.9113, train acc 0.676, test acc 0.698, time 129.5 sec
-epoch 6, loss 0.8347, train acc 0.705, test acc 0.711, time 128.4 sec
-epoch 7, loss 0.7516, train acc 0.736, test acc 0.743, time 127.9 sec
-epoch 8, loss 0.7004, train acc 0.753, test acc 0.748, time 128.5 sec
-epoch 9, loss 0.6332, train acc 0.779, test acc 0.764, time 128.1 sec
-epoch 10, loss 0.5962, train acc 0.791, test acc 0.768, time 127.9 sec
-epoch 11, loss 0.5474, train acc 0.809, test acc 0.758, time 127.8 sec
-epoch 12, loss 0.5139, train acc 0.819, test acc 0.766, time 126.7 sec
-epoch 13, loss 0.4638, train acc 0.836, test acc 0.777, time 126.3 sec
-epoch 14, loss 0.4292, train acc 0.848, test acc 0.777, time 127.0 sec
-epoch 15, loss 0.4042, train acc 0.858, test acc 0.788, time 127.5 sec
-epoch 16, loss 0.3745, train acc 0.869, test acc 0.778, time 127.9 sec
-epoch 17, loss 0.3468, train acc 0.878, test acc 0.791, time 127.2 sec
-epoch 18, loss 0.3199, train acc 0.886, test acc 0.790, time 127.5 sec
-epoch 19, loss 0.2986, train acc 0.894, test acc 0.784, time 126.5 sec
-epoch 20, loss 0.2782, train acc 0.903, test acc 0.786, time 126.2 sec
-epoch 21, loss 0.2643, train acc 0.908, test acc 0.791, time 125.0 sec
-epoch 22, loss 0.2553, train acc 0.911, test acc 0.790, time 126.6 sec
-epoch 23, loss 0.2384, train acc 0.917, test acc 0.792, time 126.2 sec
-epoch 24, loss 0.2196, train acc 0.924, test acc 0.787, time 124.9 sec
-epoch 25, loss 0.2079, train acc 0.928, test acc 0.799, time 124.8 sec
-epoch 26, loss 0.1985, train acc 0.929, test acc 0.799, time 125.6 sec
-epoch 27, loss 0.1908, train acc 0.932, test acc 0.799, time 126.5 sec
-epoch 28, loss 0.1779, train acc 0.937, test acc 0.805, time 125.4 sec
-epoch 29, loss 0.1793, train acc 0.938, test acc 0.803, time 127.2 sec
-epoch 30, loss 0.1700, train acc 0.941, test acc 0.802, time 129.2 sec
-epoch 31, loss 0.1606, train acc 0.945, test acc 0.799, time 129.7 sec
-epoch 32, loss 0.1428, train acc 0.951, test acc 0.802, time 129.5 sec
-epoch 33, loss 0.1468, train acc 0.949, test acc 0.794, time 128.4 sec
-epoch 34, loss 0.1418, train acc 0.951, test acc 0.794, time 128.2 sec
-epoch 35, loss 0.1355, train acc 0.953, test acc 0.793, time 129.4 sec
-epoch 36, loss 0.1314, train acc 0.955, test acc 0.777, time 129.9 sec
-epoch 37, loss 0.1252, train acc 0.956, test acc 0.786, time 128.9 sec
-epoch 38, loss 0.1255, train acc 0.958, test acc 0.783, time 128.0 sec
-epoch 39, loss 0.1188, train acc 0.960, test acc 0.801, time 128.2 sec
-epoch 40, loss 0.1129, train acc 0.962, test acc 0.796, time 127.4 sec
-epoch 41, loss 0.1099, train acc 0.963, test acc 0.802, time 126.7 sec
-epoch 42, loss 0.1030, train acc 0.966, test acc 0.805, time 124.7 sec
-epoch 43, loss 0.0996, train acc 0.966, test acc 0.803, time 126.7 sec
-epoch 44, loss 0.0966, train acc 0.968, test acc 0.800, time 126.6 sec
-epoch 45, loss 0.0966, train acc 0.967, test acc 0.801, time 129.0 sec
-epoch 46, loss 0.0961, train acc 0.967, test acc 0.801, time 130.4 sec
-epoch 47, loss 0.0929, train acc 0.969, test acc 0.799, time 135.6 sec
+
+'''
+'''
+VGG16 - CIFAR10:   
+
 '''
